@@ -16,19 +16,18 @@ def _(arg):
 # Add-on information variables
 addon_info = {
 	# add-on Name/identifier, internal for NVDA
-	"addon_name": "addonTemplate",
+	"addon_name": "ObjectList",
 	# Add-on summary, usually the user visible name of the addon.
 	# Translators: Summary for this add-on
 	# to be shown on installation and add-on information found in Add-ons Manager.
-	"addon_summary": _("Add-on user visible name"),
+	"addon_summary": _("List all available controls, filter them and focus it."),
 	# Add-on description
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-	"addon_description": _("""Description for the add-on.
-It can span multiple lines."""),
+	"addon_description": _("""This addon tries to mimic VO-I object list from mac."""),
 	# version
-	"addon_version": "x.y",
+	"addon_version": "0.1",
 	# Author(s)
-	"addon_author": "name <name@domain.com>",
+	"addon_author": "Stefan Lohmaier <stefan@slohmaier.de",
 	# URL for the add-on documentation support
 	"addon_url": None,
 	# URL for the add-on repository where the source code can be found
