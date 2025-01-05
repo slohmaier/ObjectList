@@ -9,7 +9,7 @@ import globalPluginHandler
 import gui
 import wx
 from scriptHandler import script
-from gui import SettingsPanel
+from gui.settingsDialogs import SettingsPanel
 from logHandler import log
 import api
 import NVDAObjects
@@ -22,12 +22,14 @@ config.conf.spec["ObjectList"] = {
 	#'whitelist': 'string(default=\'\')'
 }
 
-def findsObjects(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
+def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
 	for child in parent.children:
-		log.info(indent + child.name)
-		findsObjects(child, indent + '  ')
+		name = child.name
+		if not name is None:
+			log.error(indent + name)
+		indexObject(child, indent + '  ')
 
-def indexObjects():
+def listObjects():
 	obj = api.getFocusObject()
 	# If no object is found, get the
 	if obj is None:
@@ -37,14 +39,14 @@ def indexObjects():
 	if obj is None:
 		return
 
-	findsObjects(obj)
+	indexObject(obj)
 
 class ObjectList(wx.Dialog):
 	def __init__(self, parent, reverse=False):
 		# Translators: The title of the Specific Search dialog.
 		super(ObjectList, self).__init__(parent, title=_("Specific search"))
 
-		indexObjects()
+		listObjects()
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 		sHelper = gui.guiHelper.BoxSizerHelper(self, orientation=wx.VERTICAL)
