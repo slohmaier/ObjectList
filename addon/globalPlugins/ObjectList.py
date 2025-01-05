@@ -18,7 +18,7 @@ sys.path.append(distdir)
 addonHandler.initTranslation()
 
 #configuration for settings
-config.conf.spec["LanguageIdentification"] = {
+config.conf.spec["ObjectList"] = {
 	#'whitelist': 'string(default=\'\')'
 }
 
