@@ -2,6 +2,7 @@ import os
 import sys
 from functools import wraps
 
+import NVDAObjects.IAccessible
 import addonHandler
 import config
 import globalPluginHandler
@@ -11,9 +12,7 @@ from scriptHandler import script
 from gui import SettingsPanel
 from logHandler import log
 import api
-
-distdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dist32')
-sys.path.append(distdir)
+import NVDAObjects
 
 #make _() available
 addonHandler.initTranslation()
@@ -22,6 +21,11 @@ addonHandler.initTranslation()
 config.conf.spec["ObjectList"] = {
 	#'whitelist': 'string(default=\'\')'
 }
+
+def findsObjects(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
+	for child in parent.children:
+		log.info(indent + child.name)
+		findsObjects(child, indent + '  ')
 
 def indexObjects():
 	obj = api.getFocusObject()
@@ -33,28 +37,14 @@ def indexObjects():
 	if obj is None:
 		return
 
-    # Create a queue to store objects for traversal
-	queue = [obj]
-	index = 0
-
-	while queue:
-		current_obj = queue.pop(0)
-		index += 1
-
-		# Process the current object (e.g., print its name and role)
-		print(f"Object {index}: {current_obj.name}, Role: {current_obj.role}")
-
-		# Add the children of the current object to the queue
-		for child in current_obj.children:
-			queue.append(child)
-	return queue
+	findsObjects(obj)
 
 class ObjectList(wx.Dialog):
 	def __init__(self, parent, reverse=False):
 		# Translators: The title of the Specific Search dialog.
 		super(ObjectList, self).__init__(parent, title=_("Specific search"))
 
-		indexObjects
+		indexObjects()
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 		sHelper = gui.guiHelper.BoxSizerHelper(self, orientation=wx.VERTICAL)
