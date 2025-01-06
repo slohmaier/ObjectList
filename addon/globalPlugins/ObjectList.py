@@ -145,15 +145,18 @@ class ObjectList(wx.Dialog):
 		index = self.list_ctrl.GetFirstSelected()
 		if index != -1:  # Check if an item is selected
 			text = self.list_ctrl.GetItemText(index)
-			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
+			obj.setFocus()
 
 	def on_click(self, event):
 		index = self.list_ctrl.GetFirstSelected()
 		if index != -1:  # Check if an item is selected
 			text = self.list_ctrl.GetItemText(index)
-			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
+			obj.setFocus()
+			obj.doAction()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	scriptCategory = _("ObjectList")
