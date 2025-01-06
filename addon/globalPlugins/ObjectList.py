@@ -48,6 +48,7 @@ class ObjectList(wx.Dialog):
 		ui.message(_('Getting ObjectList. Please wait...'))
 
 		self.data = listObjects(focusObject)
+		self.filtered_data = self.data
 		self.Bind(wx.EVT_ACTIVATE, self.on_activate)
 	
 		panel = wx.Panel(self)
@@ -59,7 +60,7 @@ class ObjectList(wx.Dialog):
 		vbox.Add(self.search_field, 0, wx.EXPAND | wx.ALL, 5)
 
 		# Liste
-		self.list_ctrl = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.LC_SINGLE_SEL)
+		self.list_ctrl = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.LC_NO_HEADER | wx.NO_BORDER)
 		self.list_ctrl.SetWindowStyleFlag(wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER) 
 		self.list_ctrl.InsertColumn(0, _("UI Elements"), width=400)
 		self.update_list(self.data)
@@ -67,10 +68,10 @@ class ObjectList(wx.Dialog):
 
 		# Buttons
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
-		focus_button = wx.Button(panel, label="_Focus")
+		focus_button = wx.Button(panel, label="Focus")
 		focus_button.Bind(wx.EVT_BUTTON, self.on_focus)
 		hbox.Add(focus_button, 0, wx.ALL, 5)
-		click_button = wx.Button(panel, label="_Click")
+		click_button = wx.Button(panel, label="Click")
 		click_button.Bind(wx.EVT_BUTTON, self.on_click)
 		hbox.Add(click_button, 0, wx.ALL, 5)
 		vbox.Add(hbox, 0, wx.ALIGN_CENTER | wx.ALL, 5)
@@ -80,6 +81,11 @@ class ObjectList(wx.Dialog):
 
 		# Bind events
 		self.search_field.Bind(wx.EVT_KEY_DOWN, self.on_key_press)
+
+		# Accelerator
+		accel_tbl = wx.AcceleratorTable([(wx.ACCEL_ALT, ord('F'), focus_button.GetId()),
+										(wx.ACCEL_ALT, ord('C'), click_button.GetId())])
+		self.SetAcceleratorTable(accel_tbl)
 
 		# focus
 		self.SetFocus()
@@ -94,6 +100,7 @@ class ObjectList(wx.Dialog):
 	def on_key_press(self, event):
 		keycode = event.GetKeyCode()
 		if keycode == wx.WXK_ESCAPE:
+			ui.message(_("ObjectList closed"))
 			self.Close()
 		elif keycode == wx.WXK_DOWN:
 			current_index = self.list_ctrl.GetFirstSelected()
@@ -101,7 +108,8 @@ class ObjectList(wx.Dialog):
 			self.list_ctrl.Select(current_index, False)
 			self.list_ctrl.Select(next_index, True)
 			self.list_ctrl.Focus(next_index)
-			text = self.list_ctrl.GetItemText(next_index)
+			dataIndex = self.list_ctrl.GetItemData(next_index)
+			text = self.filtered_data[dataIndex][0]
 			ui.message(text)  # Speak the selected item
 		elif keycode == wx.WXK_UP:
 			current_index = self.list_ctrl.GetFirstSelected()
@@ -109,7 +117,8 @@ class ObjectList(wx.Dialog):
 			self.list_ctrl.Select(current_index, False)
 			self.list_ctrl.Select(previous_index, True)
 			self.list_ctrl.Focus(previous_index)
-			text = self.list_ctrl.GetItemText(previous_index)
+			dataIndex = self.list_ctrl.GetItemData(previous_index)
+			text = self.filtered_data[dataIndex][0]
 			ui.message(text)  # Speak the selected item
 		else:
 			event.Skip()
