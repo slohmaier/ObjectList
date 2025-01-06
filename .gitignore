@@ -10,3 +10,4 @@ addon/doc/en/
 .sconsign.dblite
 .idea
 .venv
+ObjectList*.json
