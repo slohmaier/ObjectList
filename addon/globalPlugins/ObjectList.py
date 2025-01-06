@@ -26,7 +26,7 @@ def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
 	objects = []
 	for child in parent.children:
 		if child.isFocusable and child.name is not None:
-			objects.append([child.role.name, child.name, child])
+			objects.append([f'{child.role.name}: {child.name}', child])
 		objects += indexObject(child, indent + '--')
 	return objects
 
@@ -43,11 +43,12 @@ def listObjects(obj: NVDAObjects.IAccessible.NVDAObject):
 class ObjectList(wx.Dialog):
 	def __init__(self, focusObject: NVDAObjects.IAccessible.NVDAObject, reverse=False):
 		# Translators: The title of the Specific Search dialog.
-		wx.Dialog.__init__(self, None, title=_("ObjectList"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+		wx.Dialog.__init__(self, None, title=_("ObjectList"))
 
 		ui.message(_('Getting ObjectList. Please wait...'))
 
 		self.data = listObjects(focusObject)
+		self.Bind(wx.EVT_ACTIVATE, self.on_activate)
 	
 		panel = wx.Panel(self)
 		vbox = wx.BoxSizer(wx.VERTICAL)
@@ -57,13 +58,12 @@ class ObjectList(wx.Dialog):
 		self.search_field.Bind(wx.EVT_TEXT, self.on_search)
 		vbox.Add(self.search_field, 0, wx.EXPAND | wx.ALL, 5)
 
-		# Tabelle
-		self.grid = gridlib.Grid(panel)
-		self.grid.CreateGrid(len(self.data), 2)
-		self.grid.SetColLabelValue(0, "Rolle")
-		self.grid.SetColLabelValue(1, "Name")
-		self.update_grid(self.data)
-		vbox.Add(self.grid, 1, wx.EXPAND | wx.ALL, 5)
+		# Liste
+		self.list_ctrl = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.LC_SINGLE_SEL)
+		self.list_ctrl.SetWindowStyleFlag(wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER) 
+		self.list_ctrl.InsertColumn(0, _("UI Elements"), width=400)
+		self.update_list(self.data)
+		vbox.Add(self.list_ctrl, 1, wx.EXPAND | wx.ALL, 5)
 
 		# Buttons
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -77,52 +77,74 @@ class ObjectList(wx.Dialog):
 
 		panel.SetSizer(vbox)
 		self.Centre()
-		self.Bind(wx.EVT_KILL_FOCUS, self.on_kill_focus)
-		self.Bind(wx.EVT_CHAR_HOOK, self.on_key_press)
-		self.search_field.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
-		self.Show(True)
 
-	def on_search(self, event):
-		search_text = self.search_field.GetValue().lower()
-		filtered_data = [row for row in self.data if search_text in row[0].lower() or search_text in row[1].lower()]
-		self.update_grid(filtered_data)
+		# Bind events
+		self.search_field.Bind(wx.EVT_KEY_DOWN, self.on_key_press)
+
+		# focus
+		self.SetFocus()
 		self.search_field.SetFocus()
+		ui.message(_("ObjectList opened"))
 
-	def update_grid(self, data):
-		self.grid.ClearGrid()
-		for i, row in enumerate(data):
-			for j, cell in enumerate(row[:2]): # Nur "Rolle" und "Name" anzeigen
-				self.grid.SetCellValue(i, j, str(cell))
-		self.grid.AutoSizeColumns()
-
-	def on_focus(self, event):
-		pass  # Leerer Handler für den _Focus Button
-
-	def on_click(self, event):
-		pass  # Leerer Handler für den _Click Button
-
-	def on_kill_focus(self, event):
-		self.Close()
+	def on_activate(self, event):
+		if not event.GetActive():  # Check if the dialog is being deactivated
+			ui.message(_("ObjectList closed"))
+			self.Close()
 
 	def on_key_press(self, event):
 		keycode = event.GetKeyCode()
 		if keycode == wx.WXK_ESCAPE:
 			self.Close()
-		else:
-			event.Skip()
-	
-	def on_key_down(self, event):
-		keycode = event.GetKeyCode()
-		if keycode == wx.WXK_DOWN:
-			current_row = self.grid.GetGridCursorRow()
-			next_row = min(current_row + 1, self.grid.GetNumberRows() - 1)
-			self.grid.SetGridCursor(next_row, 0)
+		elif keycode == wx.WXK_DOWN:
+			current_index = self.list_ctrl.GetFirstSelected()
+			next_index = min(current_index + 1, self.list_ctrl.GetItemCount() - 1)
+			self.list_ctrl.Select(current_index, False)
+			self.list_ctrl.Select(next_index, True)
+			self.list_ctrl.Focus(next_index)
+			text = self.list_ctrl.GetItemText(next_index)
+			ui.message(text)  # Speak the selected item
 		elif keycode == wx.WXK_UP:
-			current_row = self.grid.GetGridCursorRow()
-			previous_row = max(current_row - 1, 0)
-			self.grid.SetGridCursor(previous_row, 0)
+			current_index = self.list_ctrl.GetFirstSelected()
+			previous_index = max(current_index - 1, 0)
+			self.list_ctrl.Select(current_index, False)
+			self.list_ctrl.Select(previous_index, True)
+			self.list_ctrl.Focus(previous_index)
+			text = self.list_ctrl.GetItemText(previous_index)
+			ui.message(text)  # Speak the selected item
 		else:
 			event.Skip()
+
+	def on_search(self, event):
+		search_text = self.search_field.GetValue().lower()
+		self.filtered_data = [row for row in self.data if search_text in row[0].lower()]
+		self.update_list(self.filtered_data)
+		if self.list_ctrl.GetItemCount() > 0:
+			self.list_ctrl.Select(0, True)  # Select the first item
+			self.list_ctrl.Focus(0)
+			text = self.list_ctrl.GetItemText(0)
+			ui.message(text)
+
+	def update_list(self, data):
+		self.list_ctrl.DeleteAllItems()
+		rowi = 0
+		for row in data:
+			index = self.list_ctrl.InsertItem(self.list_ctrl.GetItemCount(), row[0])
+			self.list_ctrl.SetItemData(index, rowi)
+			rowi += 1
+
+	def on_focus(self, event):
+		index = self.list_ctrl.GetFirstSelected()
+		if index != -1:  # Check if an item is selected
+			text = self.list_ctrl.GetItemText(index)
+			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
+
+	def on_click(self, event):
+		index = self.list_ctrl.GetFirstSelected()
+		if index != -1:  # Check if an item is selected
+			text = self.list_ctrl.GetItemText(index)
+			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	scriptCategory = _("ObjectList")
@@ -135,10 +157,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		#show ObjectList dialog always on top
 		self.objectList = ObjectList(api.getFocusObject())
 		# add minimize and maximize buttons
+		self.objectList.Raise()
 		self.objectList.ShowModal()
 
 	def script_show_objectlist(self, gesture):
-		self.show_objectlist()
+		wx.CallAfter(self.show_objectlist)
 	script_show_objectlist.__doc__ = _("Show Objects in current window.")
 
 	__gestures = {
