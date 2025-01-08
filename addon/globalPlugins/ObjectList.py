@@ -19,7 +19,7 @@ def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
 	objects = []
 	for child in parent.children:
 		if child.isFocusable and child.name is not None:
-			objects.append([f'{child.role.name}: {child.name}', child])
+			objects.append([f'{child.role.displayString}: {child.name}', child])
 		objects += indexObject(child, indent + '--')
 	return objects
 
