@@ -1,25 +1,18 @@
-import os
-import sys
-from functools import wraps
-
-import NVDAObjects.IAccessible
+import api
+import NVDAObjects
 import addonHandler
 import config
 import globalPluginHandler
 import ui
 import wx
-from scriptHandler import script
-from gui.settingsDialogs import SettingsPanel
 from logHandler import log
-import api
-import NVDAObjects
 
 #make _() available
 addonHandler.initTranslation()
 
 #configuration for settings
 config.conf.spec["ObjectList"] = {
-	#'whitelist': 'string(default=\'\')'
+	#example: 'whitelist': 'string(default=\'\')'
 }
 
 def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
@@ -148,6 +141,9 @@ class ObjectList(wx.Dialog):
 			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
 			obj.setFocus()
+			self.close()
+		else:
+			ui.message(_("No Ui Element selected"))
 
 	def on_click(self, event):
 		index = self.list_ctrl.GetFirstSelected()
@@ -157,6 +153,9 @@ class ObjectList(wx.Dialog):
 			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
 			obj.setFocus()
 			obj.doAction()
+			self.close()
+		else:
+			ui.message(_("No Ui Element selected"))
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	scriptCategory = _("ObjectList")
