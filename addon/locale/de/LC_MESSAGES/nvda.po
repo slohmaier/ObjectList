@@ -1,0 +1,62 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 'ObjectList' '0.1'\n"
+"Report-Msgid-Bugs-To: 'nvda-translations@groups.io'\n"
+"POT-Creation-Date: 2025-01-08 21:18+0100\n"
+"PO-Revision-Date: 2025-01-08 21:27+0100\n"
+"Last-Translator: Stefan Lohmaier <stefan@slohmaier.de>\n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+
+#. Translators: The title of the Specific Search dialog.
+#: addon\globalPlugins\ObjectList.py:39 addon\globalPlugins\ObjectList.py:161
+msgid "ObjectList"
+msgstr "ObjectList"
+
+#: addon\globalPlugins\ObjectList.py:41
+msgid "Getting ObjectList. Please wait..."
+msgstr "Suche alle UI Element im aktuellen Fenster..."
+
+#: addon\globalPlugins\ObjectList.py:58
+msgid "UI Elements"
+msgstr "UI Elemente"
+
+#: addon\globalPlugins\ObjectList.py:86
+msgid "ObjectList opened"
+msgstr "ObjectList geöffnet"
+
+#. Check if the dialog is being deactivated
+#: addon\globalPlugins\ObjectList.py:90 addon\globalPlugins\ObjectList.py:96
+msgid "ObjectList closed"
+msgstr "ObjectList geschlossen"
+
+#: addon\globalPlugins\ObjectList.py:146 addon\globalPlugins\ObjectList.py:158
+msgid "No Ui Element selected"
+msgstr "Kein UI Element ausgewählt"
+
+#: addon\globalPlugins\ObjectList.py:176
+msgid "Show Objects in current window."
+msgstr "Zeige UI Element im aktuellen Fenster."
+
+#. Add-on summary, usually the user visible name of the addon.
+#. Translators: Summary for this add-on
+#. to be shown on installation and add-on information found in Add-ons Manager.
+#: buildVars.py:23
+msgid "List all available controls, filter them and focus it."
+msgstr "Liste alle verfügbaren UI Elemente aus, filtere sie und setz den Fokus auf sie."
+
+#. Add-on description
+#. Translators: Long description to be shown for this add-on on add-on information from add-ons manager
+#: buildVars.py:26
+msgid "This addon tries to mimic VO-I object list from mac."
+msgstr "Dieses AddOn versucht ähnlich zu VO-I auf dem Mac eine filterbare UI Elemente Liste anzuzeigen."
