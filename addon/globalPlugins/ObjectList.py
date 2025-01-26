@@ -3,17 +3,21 @@ import NVDAObjects
 import addonHandler
 import config
 import globalPluginHandler
+import gui.guiHelper
 import ui
 import wx
 from logHandler import log
+import gui
+from gui.settingsDialogs import SettingsPanel
 
 #make _() available
 addonHandler.initTranslation()
 
 #configuration for settings
-config.conf.spec["ObjectList"] = {
-	#example: 'whitelist': 'string(default=\'\')'
+config.conf.spec['ObjectList'] = {
+	'defaultaction:': 'string(default=\'click\')',	
 }
+DEFAULT_ACTIONS = ['click', 'focus']
 
 def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
 	objects = []
@@ -141,7 +145,7 @@ class ObjectList(wx.Dialog):
 			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
 			obj.setFocus()
-			self.close()
+			self.Close()
 		else:
 			ui.message(_("No Ui Element selected"))
 
@@ -153,7 +157,7 @@ class ObjectList(wx.Dialog):
 			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
 			obj.setFocus()
 			obj.doAction()
-			self.close()
+			self.Close()
 		else:
 			ui.message(_("No Ui Element selected"))
 
@@ -163,6 +167,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self, *args, **kwargs):
 		global service
 		super(GlobalPlugin, self).__init__(*args, **kwargs)
+
+		gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(ObjectListSettings)
 	
 	def show_objectlist(self):
 		#show ObjectList dialog always on top
@@ -178,3 +184,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	__gestures = {
 		"kb:shift+NVDA+o": "show_objectlist",
 	}
+
+class ObjectListSettings(SettingsPanel):
+	title = 'ObjectList'
+
+	def makeSettings(self, settingsSizer):
+		sHelper = gui.guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
+		
+		# add decsriptive text
+		sHelper.addItem(wx.StaticText(self, label=_('Choose default action for hitting Enter, when searching:')))
+
+		#add radio buttons aside each other for every DEFAULT_ACTIONS
+		self._radioButtons = {}
+		self.defaultActionRadio = wx.RadioBox(self, choices=DEFAULT_ACTIONS, style=wx.RA_SPECIFY_COLS)
+		sHelper.addItem(self.defaultActionRadio)
+
+		self._loadSettings()
+	
+	def _loadSettings(self):
+		self.defaultActionRadio.SetStringSelection(config.conf['ObjectList'].get('defaultaction', 'click'))
+
+	def onSave(self):
+		config.conf['ObjectList']['defaultaction'] = self.defaultActionRadio.GetStringSelection()
+	
+	def onPanelActivated(self):
+		self._loadSettings()
+		self.Show()
