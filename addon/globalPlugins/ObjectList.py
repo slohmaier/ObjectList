@@ -1,7 +1,9 @@
+from typing import List
 import api
 import NVDAObjects
 import addonHandler
 import config
+import controlTypes
 import globalPluginHandler
 import gui.guiHelper
 import ui
@@ -18,33 +20,36 @@ config.conf.spec['ObjectList'] = {
 	'defaultaction:': 'string(default=\'click\')',	
 }
 DEFAULT_ACTIONS = ['click', 'focus']
+HIDDEN_CONTROLTYPES = [
+	controlTypes.ROLE_WINDOW
+]
 
-def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  '):
+def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  ') -> List[NVDAObjects.IAccessible.NVDAObject]:
 	objects = []
 	for child in parent.children:
-		if child.isFocusable and child.name is not None:
+		if child.isFocusable and child.name is not None and child.role not in HIDDEN_CONTROLTYPES:
 			objects.append([f'{child.role.displayString}: {child.name}', child])
 		objects += indexObject(child, indent + '--')
 	return objects
 
 def listObjects(obj: NVDAObjects.IAccessible.NVDAObject):
-	while obj is not None and type(obj.parent) is not NVDAObjects.IAccessible.WindowRoot:
+	# iterate to parent until role is Window
+	while obj is not None and obj.role != controlTypes.ROLE_WINDOW:
 		obj = obj.parent
 
+	# if no window found output error message
 	if obj is None:
-		ui.message('No WindowRoot found')
 		return None
 	else:
 		return indexObject(obj)
 
 class ObjectList(wx.Dialog):
-	def __init__(self, focusObject: NVDAObjects.IAccessible.NVDAObject, reverse=False):
+	def __init__(self, objects: List[NVDAObjects.IAccessible.NVDAObject]):
 		# Translators: The title of the Specific Search dialog.
 		wx.Dialog.__init__(self, None, title=_("ObjectList"))
 
-		ui.message(_('Getting ObjectList. Please wait...'))
-
-		self.data = listObjects(focusObject)
+		self.data = objects
+		
 		self.filtered_data = self.data
 		self.Bind(wx.EVT_ACTIVATE, self.on_activate)
 	
@@ -171,11 +176,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(ObjectListSettings)
 	
 	def show_objectlist(self):
-		#show ObjectList dialog always on top
-		self.objectList = ObjectList(api.getFocusObject())
-		# add minimize and maximize buttons
-		self.objectList.Raise()
-		self.objectList.ShowModal()
+		# get objects
+		ui.message(_('Getting ObjectList. Please wait...'))
+		objects = listObjects(api.getFocusObject())
+		if objects is None:
+			ui.message(_('No WindowRoot found'))
+		else:
+			#show ObjectList dialog always on top
+			self.objectList = ObjectList(objects)
+			# add minimize and maximize buttons
+			self.objectList.Raise()
+			self.objectList.ShowModal()
 
 	def script_show_objectlist(self, gesture):
 		wx.CallAfter(self.show_objectlist)
