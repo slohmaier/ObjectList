@@ -70,6 +70,11 @@ CONTROL_TYPE_NAMES = {
     50039: "SemanticZoom",
     50040: "AppBar"
 }
+HIDEDEN_TYPES = [
+	50026, #Group
+	50032, #Window
+	50033, #Pane
+]
 
 # Init COM
 comtypes.CoInitialize()
@@ -96,8 +101,9 @@ def collect_elements(walker, element, depth=0):
         name = element.CurrentName
         ctrl_id = element.CurrentControlType
         ctrl_type = CONTROL_TYPE_NAMES.get(ctrl_id, f"Unknown({ctrl_id})")
-        label = f"{ctrl_type}: \"{name}\"".strip()
-        elements.append((label, element))
+        label = f'{ctrl_type}: "{name}"'.strip()
+        if not ctrl_id in HIDEDEN_TYPES:
+            elements.append((label, element))
     except Exception:
         pass
 
@@ -113,6 +119,14 @@ def click(element):
     try:
         invoke = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
         invoke.Invoke()
+        return True
+    except Exception:
+        return False
+	
+# Action helpers
+def focus(element):
+    try:
+        element.SetFocus()
         return True
     except Exception:
         return False
@@ -132,7 +146,7 @@ class ObjectList(wx.Dialog):
 
 		# Suchfeld
 		self.search_field = wx.TextCtrl(panel)
-		self.search_field.Bind(wx.EVT_TEXT, self.on_search)
+		self.search_field.Bind(wx.EVT_TEXT, self.refresh_list)
 		vbox.Add(self.search_field, 0, wx.EXPAND | wx.ALL, 5)
 
 		# Liste
@@ -141,6 +155,12 @@ class ObjectList(wx.Dialog):
 		self.list_ctrl.InsertColumn(0, _("UI Elements"), width=400)
 		self.update_list(self.data)
 		vbox.Add(self.list_ctrl, 1, wx.EXPAND | wx.ALL, 5)
+
+		# Add a checkbox to hide unnamed elements
+		self.hide_unnamed_checkbox = wx.CheckBox(panel, label=_("Hide unnamed elements"))
+		self.hide_unnamed_checkbox.SetValue(True)
+		self.hide_unnamed_checkbox.Bind(wx.EVT_CHECKBOX, self.refresh_list)
+		vbox.Add(self.hide_unnamed_checkbox, 0, wx.ALIGN_LEFT | wx.ALL, 5)
 
 		# Buttons
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -199,9 +219,16 @@ class ObjectList(wx.Dialog):
 		else:
 			event.Skip()
 
-	def on_search(self, event):
+	def refresh_list(self, event):
 		search_text = self.search_field.GetValue().lower()
-		self.filtered_data = [row for row in self.data if search_text in row[0].lower()]
+		self.filtered_data = []
+		hideEmpty = self.hide_unnamed_checkbox.isChecked()
+		for row in self.data:
+			label, obj = row
+			if hideEmpty and obj.CurrentName is None or obj.CurrentName.strip() == '':
+				continue
+			if search_text in label.lower():
+				self.filtered_data.append(row)
 		self.update_list(self.filtered_data)
 		if self.list_ctrl.GetItemCount() > 0:
 			self.list_ctrl.Select(0, True)  # Select the first item
