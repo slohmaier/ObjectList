@@ -12,6 +12,11 @@ from logHandler import log
 import gui
 from gui.settingsDialogs import SettingsPanel
 
+import comtypes.client
+import comtypes
+from ctypes import windll
+from comtypes.gen import _944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0
+
 #make _() available
 addonHandler.initTranslation()
 
@@ -20,31 +25,98 @@ config.conf.spec['ObjectList'] = {
 	'defaultaction:': 'string(default=\'click\')',	
 }
 DEFAULT_ACTIONS = ['click', 'focus']
-HIDDEN_CONTROLTYPES = [
-	controlTypes.ROLE_WINDOW
-]
 
-def indexObject(parent: NVDAObjects.IAccessible.NVDAObject, indent='  ') -> List[NVDAObjects.IAccessible.NVDAObject]:
-	objects = []
-	for child in parent.children:
-		if child.isFocusable and child.name is not None and child.role not in HIDDEN_CONTROLTYPES:
-			objects.append([f'{child.role.displayString}: {child.name}', child])
-		objects += indexObject(child, indent + '--')
-	return objects
+# Control type mapping
+CONTROL_TYPE_NAMES = {
+    50000: "Button",
+    50001: "Calendar",
+    50002: "CheckBox",
+    50003: "ComboBox",
+    50004: "Edit",
+    50005: "Hyperlink",
+    50006: "Image",
+    50007: "ListItem",
+    50008: "List",
+    50009: "Menu",
+    50010: "MenuBar",
+    50011: "MenuItem",
+    50012: "ProgressBar",
+    50013: "RadioButton",
+    50014: "ScrollBar",
+    50015: "Slider",
+    50016: "Spinner",
+    50017: "StatusBar",
+    50018: "Tab",
+    50019: "TabItem",
+    50020: "Text",
+    50021: "ToolBar",
+    50022: "ToolTip",
+    50023: "Tree",
+    50024: "TreeItem",
+    50025: "Custom",
+    50026: "Group",
+    50027: "Thumb",
+    50028: "DataGrid",
+    50029: "DataItem",
+    50030: "Document",
+    50031: "SplitButton",
+    50032: "Window",
+    50033: "Pane",
+    50034: "Header",
+    50035: "HeaderItem",
+    50036: "Table",
+    50037: "TitleBar",
+    50038: "Separator",
+    50039: "SemanticZoom",
+    50040: "AppBar"
+}
 
-def listObjects(obj: NVDAObjects.IAccessible.NVDAObject):
-	# iterate to parent until role is Window
-	while obj is not None and obj.role != controlTypes.ROLE_WINDOW:
-		obj = obj.parent
+# Init COM
+comtypes.CoInitialize()
 
-	# if no window found output error message
-	if obj is None:
-		return None
-	else:
-		return indexObject(obj)
+# Create UI Automation instance via CLSID
+CLSID_CUIAutomation = '{FF48DBA4-60EF-4201-AA87-54103EEF594E}'
+uia = comtypes.client.CreateObject(
+	CLSID_CUIAutomation,
+	interface=_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomation
+)
+
+def index_current_window(self):
+	# Get foreground window
+	hwnd = windll.user32.GetForegroundWindow()
+	root = uia.ElementFromHandle(hwnd)
+	walker = uia.ControlViewWalker
+
+# Recursive UI walk function
+def collect_elements(walker, element, depth=0):
+    elements = []
+    try:
+        name = element.CurrentName
+        ctrl_id = element.CurrentControlType
+        ctrl_type = CONTROL_TYPE_NAMES.get(ctrl_id, f"Unknown({ctrl_id})")
+        label = f"{ctrl_type}: \"{name}\"".strip()
+        elements.append((label, element))
+    except Exception:
+        pass
+
+    # Recurse
+    child = walker.GetFirstChildElement(element)
+    while child:
+        elements.extend(collect_elements(walker, child)
+        child = walker.GetNextSiblingElement(child)
+
+    return elements
+
+def click(element):
+    try:
+        invoke = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
+        invoke.Invoke()
+        return True
+    except Exception:
+        return False
 
 class ObjectList(wx.Dialog):
-	def __init__(self, objects: List[NVDAObjects.IAccessible.NVDAObject]):
+	def __init__(self, objects: List[tuple]):
 		# Translators: The title of the Specific Search dialog.
 		wx.Dialog.__init__(self, None, title=_("ObjectList"))
 
@@ -147,9 +219,9 @@ class ObjectList(wx.Dialog):
 		index = self.list_ctrl.GetFirstSelected()
 		if index != -1:  # Check if an item is selected
 			text = self.list_ctrl.GetItemText(index)
-			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
-			obj.setFocus()
+			focus(obj)
 			self.Close()
 		else:
 			ui.message(_("No Ui Element selected"))
@@ -158,10 +230,9 @@ class ObjectList(wx.Dialog):
 		index = self.list_ctrl.GetFirstSelected()
 		if index != -1:  # Check if an item is selected
 			text = self.list_ctrl.GetItemText(index)
-			obj : NVDAObjects.NVDAObject = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
+			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
 			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
-			obj.setFocus()
-			obj.doAction()
+			click(obj)
 			self.Close()
 		else:
 			ui.message(_("No Ui Element selected"))

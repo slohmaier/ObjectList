@@ -20,7 +20,7 @@ addon_info = {
 	# Add-on summary, usually the user visible name of the addon.
 	# Translators: Summary for this add-on
 	# to be shown on installation and add-on information found in Add-ons Manager.
-	"addon_summary": _("List all available controls, filter them and focus it."),
+	"addon_summary": _("ObjectList"),
 	# Add-on description
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
 	"addon_description": _("""This addon tries to mimic VO-I object list from mac."""),
