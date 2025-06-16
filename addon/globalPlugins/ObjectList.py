@@ -81,11 +81,13 @@ uia = comtypes.client.CreateObject(
 	interface=_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomation
 )
 
-def index_current_window(self):
+def index_current_window():
 	# Get foreground window
 	hwnd = windll.user32.GetForegroundWindow()
 	root = uia.ElementFromHandle(hwnd)
 	walker = uia.ControlViewWalker
+
+	return collect_elements(walker, root)
 
 # Recursive UI walk function
 def collect_elements(walker, element, depth=0):
@@ -102,7 +104,7 @@ def collect_elements(walker, element, depth=0):
     # Recurse
     child = walker.GetFirstChildElement(element)
     while child:
-        elements.extend(collect_elements(walker, child)
+        elements.extend(collect_elements(walker, child))
         child = walker.GetNextSiblingElement(child)
 
     return elements
@@ -249,8 +251,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def show_objectlist(self):
 		# get objects
 		ui.message(_('Getting ObjectList. Please wait...'))
-		objects = listObjects(api.getFocusObject())
-		if objects is None:
+		objects = index_current_window()
+		if objects is None or len(objects) == 0:
+			# Translators: Message shown when no objects are found in the current window.
 			ui.message(_('No WindowRoot found'))
 		else:
 			#show ObjectList dialog always on top
