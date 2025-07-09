@@ -222,7 +222,7 @@ class ObjectList(wx.Dialog):
 	def refresh_list(self, event):
 		search_text = self.search_field.GetValue().lower()
 		self.filtered_data = []
-		hideEmpty = self.hide_unnamed_checkbox.isChecked()
+		hideEmpty = self.hide_unnamed_checkbox.GetValue()
 		for row in self.data:
 			label, obj = row
 			if hideEmpty and obj.CurrentName is None or obj.CurrentName.strip() == '':
