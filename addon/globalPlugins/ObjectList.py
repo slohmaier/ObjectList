@@ -11,7 +11,6 @@ import wx
 from logHandler import log
 import gui
 from gui.settingsDialogs import SettingsPanel
-import traceback
 
 import comtypes.client
 import comtypes
@@ -75,8 +74,6 @@ HIDEDEN_TYPES = [
 	50026, #Group
 	50032, #Window
 	50033, #Pane
-	50020, #Text
-	50022, #ToolTip
 ]
 
 # Init COM
@@ -122,57 +119,62 @@ def click(element):
     try:
         # Try Invoke pattern first (for buttons, menu items, etc.)
         try:
-            invoke = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
-            invoke.Invoke()
-            return True
-        except Exception:
-			# leog error with traceback
-            log.error("Invoke pattern failed", exc_info=True)
-            pass
+            invoke_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
+            if invoke_pattern:
+                invoke = invoke_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationInvokePattern)
+                invoke.Invoke()
+                return True
+        except Exception as e:
+            log.debug(f"Invoke pattern failed: {e}")
         
         # Try Toggle pattern (for checkboxes, radio buttons, etc.)
         try:
-            toggle = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_TogglePatternId)
-            toggle.Toggle()
-            return True
-        except Exception:
-            log.error("Toggle pattern failed", exc_info=True)
-            pass
+            toggle_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_TogglePatternId)
+            if toggle_pattern:
+                toggle = toggle_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationTogglePattern)
+                toggle.Toggle()
+                return True
+        except Exception as e:
+            log.debug(f"Toggle pattern failed: {e}")
         
         # Try Selection pattern (for list items, etc.)
         try:
-            selection = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
-            selection.Select()
-            return True
-        except Exception:
-            log.error("Selection pattern failed", exc_info=True)
-            pass
+            selection_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
+            if selection_pattern:
+                selection = selection_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationSelectionItemPattern)
+                selection.Select()
+                return True
+        except Exception as e:
+            log.debug(f"Selection pattern failed: {e}")
         
         # Try LegacyIAccessible pattern (for older controls)
         try:
-            legacy = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
-            legacy.DoDefaultAction()
-            return True
-        except Exception:
-            pass
+            legacy_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
+            if legacy_pattern:
+                legacy = legacy_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationLegacyIAccessiblePattern)
+                legacy.DoDefaultAction()
+                return True
+        except Exception as e:
+            log.debug(f"LegacyIAccessible pattern failed: {e}")
         
         # As a last resort, try to set focus and simulate a click
         try:
             element.SetFocus()
             # Get the bounding rectangle and simulate a mouse click
             rect = element.CurrentBoundingRectangle
-            x = rect.left + (rect.right - rect.left) // 2
-            y = rect.top + (rect.bottom - rect.top) // 2
-            windll.user32.SetCursorPos(x, y)
-            windll.user32.mouse_event(0x0002, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTDOWN
-            windll.user32.mouse_event(0x0004, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTUP
-            return True
-        except Exception:
-            log.error("Failed to click element", exc_info=True)
-            pass
+            if rect.right > rect.left and rect.bottom > rect.top:
+                x = rect.left + (rect.right - rect.left) // 2
+                y = rect.top + (rect.bottom - rect.top) // 2
+                windll.user32.SetCursorPos(x, y)
+                windll.user32.mouse_event(0x0002, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTDOWN
+                windll.user32.mouse_event(0x0004, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTUP
+                return True
+        except Exception as e:
+            log.debug(f"Mouse click simulation failed: {e}")
         
         return False
-    except Exception:
+    except Exception as e:
+        log.debug(f"Click method failed: {e}")
         return False
 	
 # Action helpers
@@ -190,15 +192,19 @@ def focus(element):
         except Exception:
             try:
                 # Try using Selection pattern for items that support it
-                selection = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
-                selection.Select()
-                return True
+                selection_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
+                if selection_pattern:
+                    selection = selection_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationSelectionItemPattern)
+                    selection.Select()
+                    return True
             except Exception:
                 try:
                     # Try LegacyIAccessible pattern
-                    legacy = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
-                    legacy.accSelect(1, None)  # SELFLAG_TAKEFOCUS
-                    return True
+                    legacy_pattern = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
+                    if legacy_pattern:
+                        legacy = legacy_pattern.QueryInterface(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.IUIAutomationLegacyIAccessiblePattern)
+                        legacy.accSelect(1, None)  # SELFLAG_TAKEFOCUS
+                        return True
                 except Exception:
                     pass
         return False
@@ -260,8 +266,6 @@ class ObjectList(wx.Dialog):
 		self.search_field.SetFocus()
 		ui.message(_("ObjectList opened"))
 
-		self.refresh_list(None)  # Initial population of the list
-
 	def on_activate(self, event):
 		if not event.GetActive():  # Check if the dialog is being deactivated
 			ui.message(_("ObjectList closed"))
@@ -299,7 +303,7 @@ class ObjectList(wx.Dialog):
 		hideEmpty = self.hide_unnamed_checkbox.GetValue()
 		for row in self.data:
 			label, obj = row
-			if hideEmpty and obj.CurrentName is None or obj.CurrentName.strip() == '':
+			if hideEmpty and (obj.CurrentName is None or obj.CurrentName.strip() == ''):
 				continue
 			if search_text in label.lower():
 				self.filtered_data.append(row)
@@ -335,11 +339,22 @@ class ObjectList(wx.Dialog):
 	def on_click(self, event):
 		index = self.list_ctrl.GetFirstSelected()
 		if index != -1:  # Check if an item is selected
-			text = self.list_ctrl.GetItemText(index)
-			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
-			ui.message(f"Click: Text - {text}, Object - {str(obj)}")
-			click(obj)
-			self.Close()
+			try:
+				text = self.list_ctrl.GetItemText(index)
+				data_index = self.list_ctrl.GetItemData(index)
+				if data_index < len(self.filtered_data):
+					obj = self.filtered_data[data_index][1]
+					ui.message(f"Clicking: {text}")
+					if click(obj):
+						ui.message("Click successful")
+					else:
+						ui.message("Click failed - element may not be clickable")
+					self.Close()
+				else:
+					ui.message("Error: Invalid element selection")
+			except Exception as e:
+				log.debug(f"Error in on_click: {e}")
+				ui.message("Error performing click action")
 		else:
 			ui.message(_("No Ui Element selected"))
 
