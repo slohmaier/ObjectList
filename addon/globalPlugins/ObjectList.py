@@ -11,6 +11,7 @@ import wx
 from logHandler import log
 import gui
 from gui.settingsDialogs import SettingsPanel
+import traceback
 
 import comtypes.client
 import comtypes
@@ -74,6 +75,8 @@ HIDEDEN_TYPES = [
 	50026, #Group
 	50032, #Window
 	50033, #Pane
+	50020, #Text
+	50022, #ToolTip
 ]
 
 # Init COM
@@ -117,18 +120,87 @@ def collect_elements(walker, element, depth=0):
 
 def click(element):
     try:
-        invoke = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
-        invoke.Invoke()
-        return True
+        # Try Invoke pattern first (for buttons, menu items, etc.)
+        try:
+            invoke = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_InvokePatternId)
+            invoke.Invoke()
+            return True
+        except Exception:
+			# leog error with traceback
+            log.error("Invoke pattern failed", exc_info=True)
+            pass
+        
+        # Try Toggle pattern (for checkboxes, radio buttons, etc.)
+        try:
+            toggle = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_TogglePatternId)
+            toggle.Toggle()
+            return True
+        except Exception:
+            log.error("Toggle pattern failed", exc_info=True)
+            pass
+        
+        # Try Selection pattern (for list items, etc.)
+        try:
+            selection = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
+            selection.Select()
+            return True
+        except Exception:
+            log.error("Selection pattern failed", exc_info=True)
+            pass
+        
+        # Try LegacyIAccessible pattern (for older controls)
+        try:
+            legacy = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
+            legacy.DoDefaultAction()
+            return True
+        except Exception:
+            pass
+        
+        # As a last resort, try to set focus and simulate a click
+        try:
+            element.SetFocus()
+            # Get the bounding rectangle and simulate a mouse click
+            rect = element.CurrentBoundingRectangle
+            x = rect.left + (rect.right - rect.left) // 2
+            y = rect.top + (rect.bottom - rect.top) // 2
+            windll.user32.SetCursorPos(x, y)
+            windll.user32.mouse_event(0x0002, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTDOWN
+            windll.user32.mouse_event(0x0004, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTUP
+            return True
+        except Exception:
+            log.error("Failed to click element", exc_info=True)
+            pass
+        
+        return False
     except Exception:
         return False
 	
 # Action helpers
 def focus(element):
     try:
+        # Try to set focus directly
         element.SetFocus()
         return True
     except Exception:
+        try:
+            # Try to scroll into view first, then set focus
+            element.ScrollIntoView()
+            element.SetFocus()
+            return True
+        except Exception:
+            try:
+                # Try using Selection pattern for items that support it
+                selection = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_SelectionItemPatternId)
+                selection.Select()
+                return True
+            except Exception:
+                try:
+                    # Try LegacyIAccessible pattern
+                    legacy = element.GetCurrentPattern(_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.UIA_LegacyIAccessiblePatternId)
+                    legacy.accSelect(1, None)  # SELFLAG_TAKEFOCUS
+                    return True
+                except Exception:
+                    pass
         return False
 
 class ObjectList(wx.Dialog):
@@ -187,6 +259,8 @@ class ObjectList(wx.Dialog):
 		self.SetFocus()
 		self.search_field.SetFocus()
 		ui.message(_("ObjectList opened"))
+
+		self.refresh_list(None)  # Initial population of the list
 
 	def on_activate(self, event):
 		if not event.GetActive():  # Check if the dialog is being deactivated
@@ -249,11 +323,14 @@ class ObjectList(wx.Dialog):
 		if index != -1:  # Check if an item is selected
 			text = self.list_ctrl.GetItemText(index)
 			obj = self.filtered_data[self.list_ctrl.GetItemData(index)][1]
-			ui.message(f"Focus: Text - {text}, Object - {str(obj)}")
-			focus(obj)
+			ui.message(f"Focusing: {text}")
+			if focus(obj):
+				ui.message("Focus successful")
+			else:
+				ui.message("Focus failed - element may not be focusable")
 			self.Close()
 		else:
-			ui.message(_("No Ui Element selected"))
+			ui.message("No UI Element selected")
 
 	def on_click(self, event):
 		index = self.list_ctrl.GetFirstSelected()
